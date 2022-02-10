@@ -182,11 +182,14 @@ func (m Migrator) HasTable(value interface{}) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		currentDatabase := m.DB.Migrator().CurrentDatabase()
-		return m.DB.Raw(
-			"SELECT count(*) FROM system.tables WHERE database = ? AND name = ? AND is_temporary = ?",
-			currentDatabase,
-			stmt.Table,
-			uint8(0)).Row().Scan(&count)
+		db, _ := m.DB.DB()
+		rows, _ := db.Query(fmt.Sprintf("SELECT count(*) FROM system.tables WHERE database = '%s' AND name = '%s' AND is_temporary = 0", currentDatabase, stmt.Table))
+		for rows.Next() {
+			if err := rows.Scan(&count); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	return count > 0
 }
